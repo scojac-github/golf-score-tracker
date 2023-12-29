@@ -56,6 +56,11 @@ def main():
             basic_stats()
         elif action == '3':
             add_new_course()
+        elif action == '4':
+            # Implement the graph creation logic (not provided in the original code)
+            pass
+        elif action == '5':
+            view_most_recent_scores()
         else:
             print('ERROR: Invalid input')
 
@@ -168,6 +173,28 @@ def add_new_course():
 
     # Refresh list of courses
     display_courses(cursor_scores)
+    
+def view_most_recent_scores():
+    select_recent_scores_query = '''
+    SELECT course_name AS 'Course', score AS 'Score', over_under AS 'Over/Under', differential AS 'Differential'
+    FROM scores
+    JOIN courses ON scores.course_id = courses.course_id
+    ORDER BY id
+    LIMIT 20;
+    '''
+
+    recent_scores = pd.read_sql_query(select_recent_scores_query, database_scores)
+
+    if not recent_scores.empty:
+        print("\nMost Recent Scores:")
+        print(recent_scores)
+    else:
+        print("No recent scores found.")
+
+def get_action():
+    print('\nWhat would you like to do? (Enter # of the desired action):')
+    action = input('1) Add a new round to the database\n2) View some basic stats\n3) Add a new course\n4) Create a graph to compare stats\n5) View most recent scores\n')
+    return action
 
 if __name__ == '__main__':
     main()
