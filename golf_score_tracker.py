@@ -4,42 +4,48 @@ import pandas as pd
 GREEN = '\033[92m'
 RESET = '\033[0m'
 
-def setup_database():
-    database_scores = sql.connect('scores.sqlite')
-    cursor_scores = database_scores.cursor()
+database_scores = sql.connect('scores.sqlite')
+cursor_scores = database_scores.cursor()
 
-    database_courses = sql.connect('courses.sqlite')
-    cursor_courses = database_courses.cursor()
+database_courses = sql.connect('courses.sqlite')
+cursor_courses = database_courses.cursor()
 
-    create_table_query_scores = '''CREATE TABLE IF NOT EXISTS scores (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        course_id INTEGER NOT NULL,
-        score INTEGER NOT NULL,
-        par INTEGER NOT NULL,
-        course_rtg INTEGER NOT NULL,
-        slope INTEGER NOT NULL,
-        differential INTEGER,
-        over_under INTEGER
-    );
-    '''
-    cursor_scores.execute(create_table_query_scores)
-    database_scores.commit()
+create_table_query_scores = '''CREATE TABLE IF NOT EXISTS scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    course_id INTEGER NOT NULL,
+    score INTEGER NOT NULL,
+    par INTEGER NOT NULL,
+    course_rtg INTEGER NOT NULL,
+    slope INTEGER NOT NULL,
+    differential INTEGER,
+    over_under INTEGER
+);
+'''
+cursor_scores.execute(create_table_query_scores)
+database_scores.commit()
 
-    create_table_query_courses = '''CREATE TABLE IF NOT EXISTS courses (
-        course_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        course_name TEXT NOT NULL,
-        course_par INTEGER NOT NULL,
-        course_rating DECIMAL (3,1) NOT NULL,
-        slope_rating INTEGER NOT NULL
-    );
-    '''
-    cursor_courses.execute(create_table_query_courses)
-    database_courses.commit()
-
-    return database_scores, cursor_scores, database_courses, cursor_courses
+create_table_query_courses = '''CREATE TABLE IF NOT EXISTS courses (
+    course_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    course_name TEXT NOT NULL,
+    course_par INTEGER NOT NULL,
+    course_rating DECIMAL (3,1) NOT NULL,
+    slope_rating INTEGER NOT NULL
+);
+'''
+cursor_courses.execute(create_table_query_courses)
+database_courses.commit()
 
 def main():
-    initialize_program()
+    ascii_art = """
+░██████╗░░█████╗░██╗░░░░░███████╗  ████████╗██████╗░░█████╗░░█████╗░██╗░░██╗███████╗██████╗░
+██╔════╝░██╔══██╗██║░░░░░██╔════╝  ╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗██║░██╔╝██╔════╝██╔══██╗
+██║░░██╗░██║░░██║██║░░░░░█████╗░░  ░░░██║░░░██████╔╝███████║██║░░╚═╝█████═╝░█████╗░░██████╔╝
+██║░░╚██╗██║░░██║██║░░░░░██╔══╝░░  ░░░██║░░░██╔══██╗██╔══██║██║░░██╗██╔═██╗░██╔══╝░░██╔══██╗
+╚██████╔╝╚█████╔╝███████╗██║░░░░░  ░░░██║░░░██║░░██║██║░░██║╚█████╔╝██║░╚██╗███████╗██║░░██║
+░╚═════╝░░╚════╝░╚══════╝╚═╝░░░░░  ░░░╚═╝░░░╚═╝░░╚═╝╚═╝░░╚═╝░╚════╝░╚═╝░░╚═╝╚══════╝╚═╝░░╚═╝
+    """
+
+    print(GREEN + ascii_art + RESET)
 
     quit_program = False
     while not quit_program:
@@ -64,11 +70,19 @@ def main():
         else:
             quit_program = True
 
-    terminate_program()
+    print(GREEN + '\nTerminating connection to the database. Goodbye!\n' + RESET)
+    database_scores.commit()
+    cursor_scores.close()
+    database_scores.close()
+
+    database_courses.commit()
+    cursor_courses.close()
+    database_courses.close()
+    exit()
 
 def get_action():
     print('\nWhat would you like to do? (Enter # of the desired action):')
-    action = input('1) Add a new round to the database\n2) View some basic stats\n3) Add a new course\n4) Create a graph to compare stats\n5) View most recent scores\n')
+    action = input('1) Add a new round to the database\n2) View some basic stats\n3) Add a new course\n4) Create a graph to compare stats\n')
     return action
 
 def display_courses(cursor):
@@ -81,30 +95,31 @@ def display_courses(cursor):
         print(f'{course_id}. {course_name}')
 
 def new_row():
-    display_courses(cursor_scores)
-    course_id = int(input('\nSelect a course (Enter Course ID): '))
+    while True:
+        display_courses(cursor_scores)
+        course_id = int(input('\nSelect a course (Enter Course ID): '))
 
-    select_course_query = '''SELECT * FROM courses WHERE course_id = ?;'''
-    cursor_scores.execute(select_course_query, (course_id,))
-    course_details = cursor_scores.fetchone()
+        select_course_query = '''SELECT * FROM courses WHERE course_id = ?;'''
+        cursor_scores.execute(select_course_query, (course_id,))
+        course_details = cursor_scores.fetchone()
 
-    if course_details:
-        course_id, course_name, course_par, course_rating, course_slope = course_details
-        score = int(input(f'What did you shoot at {course_name}? '))
+        if course_details:
+            course_id, course_name, course_par, course_rating, course_slope = course_details
+            score = int(input(f'What did you shoot at {course_name}? '))
 
-        insert_query = '''INSERT INTO scores
-                            (course_id, score, par, course_rtg, slope, over_under, differential)
-                            VALUES
-                            (?, ?, ?, ?, ?, ?, ?);'''
+            insert_query = '''INSERT INTO scores
+                                (course_id, score, par, course_rtg, slope, over_under, differential)
+                                VALUES
+                                (?, ?, ?, ?, ?, ?, ?);'''
 
-        cursor_scores.execute(insert_query, (course_id, score, course_par, course_rating, course_slope, score - course_par, (113 / course_slope) * (score - course_rating)))
-        print(GREEN + 'Round added successfully!' + RESET)
-    else:
-        print(GREEN + 'Invalid course selection.' + RESET)
+            cursor_scores.execute(insert_query, (course_id, score, course_par, course_rating, course_slope, score - course_par, (113 / course_slope) * (score - course_rating)))
+            print(GREEN + 'Round added successfully!' + RESET)
+        else:
+            print(GREEN + 'Invalid course selection.' + RESET)
 
-    another_round = input('\nDo you want to enter another round? (Y/N): ').lower()
-    if another_round != 'y':
-        return
+        another_round = input('\nDo you want to enter another round? (Y/N): ').lower()
+        if another_round != 'y':
+            break
 
 def get_stats():
     avg_score = '''SELECT AVG(score) AS avg_score FROM scores'''
@@ -139,17 +154,18 @@ def calculate_handicap():
 
     if not lowest_differentials.empty:
         average_differential = lowest_differentials['differential'].mean()
-        handicap = round((average_differential), 2)
+        handicap = round((average_differential), 2)  # The Handicap formula (adjust as needed)
         return handicap
     else:
         return None
 
 def basic_stats():
+    
     handicap = calculate_handicap()
     if handicap is not None:
         print(GREEN + '\nHandicap Index:' + RESET)
         print(f'    Handicap: {handicap}')
-
+        
     stats = get_stats()
 
     print(GREEN + '\nAverages:' + RESET)
@@ -178,8 +194,9 @@ def add_new_course():
 
     print(GREEN + 'New course added successfully!' + RESET)
 
+    # Refresh list of courses
     display_courses(cursor_scores)
-
+    
 def view_most_recent_scores():
     select_recent_scores_query = '''
     SELECT course_name AS 'Course', score AS 'Score', over_under AS 'Over/Under', differential AS 'Differential'
@@ -197,29 +214,10 @@ def view_most_recent_scores():
     else:
         print("No recent scores found.")
 
-def initialize_program():
-    ascii_art = """
-    ░██████╗░░█████╗░██╗░░░░░███████╗  ████████╗██████╗░░█████╗░░█████╗░██╗░░██╗███████╗██████╗░
-    ██╔════╝░██╔══██╗██║░░░░░██╔════╝  ╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗██║░██╔╝██╔════╝██╔══██╗
-    ██║░░██╗░██║░░██║██║░░░░░█████╗░░  ░░░██║░░░██████╔╝███████║██║░░╚═╝█████═╝░█████╗░░██████╔╝
-    ██║░░╚██╗██║░░██║██║░░░░░██╔══╝░░  ░░░██║░░░██╔══██╗██╔══██║██║░░██╗██╔═██╗░██╔══╝░░██╔══██╗
-    ╚██████╔╝╚█████╔╝███████╗██║░░░░░  ░░░██║░░░██║░░██║██║░░██║╚█████╔╝██║░╚██╗███████╗██║░░██║
-    ░╚═════╝░░╚════╝░╚══════╝╚═╝░░░░░  ░░░╚═╝░░░╚═╝░░╚═╝╚═╝░░╚═╝░╚════╝░╚═╝░░╚═╝╚══════╝╚═╝░░╚═╝
-    """
-
-    print(GREEN + ascii_art + RESET)
-
-def terminate_program():
-    print(GREEN + '\nTerminating connection to the database. Goodbye!\n' + RESET)
-    database_scores.commit()
-    cursor_scores.close()
-    database_scores.close()
-
-    database_courses.commit()
-    cursor_courses.close()
-    database_courses.close()
-    exit()
+def get_action():
+    print('\nWhat would you like to do? (Enter # of the desired action):')
+    action = input('1) Add a new round to the database\n2) View some basic stats\n3) Add a new course\n4) Create a graph to compare stats\n5) View most recent scores\n')
+    return action
 
 if __name__ == '__main__':
-    database_scores, cursor_scores, database_courses, cursor_courses = setup_database()
     main()
